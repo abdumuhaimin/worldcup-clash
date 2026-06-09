@@ -144,7 +144,7 @@ export default function Page() {
                   <details className="advanced">
                     <summary>What if they finish… (advanced)</summary>
                     <div className="whatif">
-                      <div className="col">
+                      <div className="pos-col">
                         <div
                           style={{
                             fontSize: 12,
@@ -166,7 +166,7 @@ export default function Page() {
                           ))}
                         </div>
                       </div>
-                      <div className="col">
+                      <div className="pos-col">
                         <div
                           style={{
                             fontSize: 12,
