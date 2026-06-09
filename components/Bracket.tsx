@@ -15,16 +15,18 @@ const SF_ORDER = [101, 102];
 const byId = (id: number): R32Match => R32.find((m) => m.id === id)!;
 const r32ForR16 = (r16: number) => R32.filter((m) => m.r16 === r16);
 
+type Conn = "top" | "bottom";
+
 function meetNodeId(result: MeetingResult): { round: string; id: number } | null {
   if (result.sameGroup) return null;
   const { round, matchA } = result.earliest;
   const m = byId(matchA);
   switch (round) {
-    case "Round of 32":   return { round, id: m.id };
-    case "Round of 16":   return { round, id: m.r16 };
+    case "Round of 32":    return { round, id: m.id };
+    case "Round of 16":    return { round, id: m.r16 };
     case "Quarter-finals": return { round, id: m.qf };
-    case "Semi-finals":   return { round, id: m.sf };
-    default:              return { round: "Final", id: 104 };
+    case "Semi-finals":    return { round, id: m.sf };
+    default:               return { round: "Final", id: 104 };
   }
 }
 
@@ -38,16 +40,18 @@ function R32Cell({
   teamA,
   teamB,
   isMeet,
+  conn,
   style,
 }: {
   match: R32Match;
   teamA: Team;
   teamB: Team;
   isMeet: boolean;
+  conn: Conn;
   style?: React.CSSProperties;
 }) {
   return (
-    <div className={`node${isMeet ? " meet" : ""}`} style={style}>
+    <div className={`node conn-${conn}${isMeet ? " meet" : ""}`} style={style}>
       <div className="mno">M{match.id}</div>
       {[match.a, match.b].map((slot, i) => {
         const a = slotHostsTeam(slot, teamA);
@@ -70,6 +74,8 @@ function FutureCell({
   isMeet,
   hasA,
   hasB,
+  conn,
+  parent,
   style,
 }: {
   label: string;
@@ -77,10 +83,21 @@ function FutureCell({
   isMeet: boolean;
   hasA: boolean;
   hasB: boolean;
+  conn?: Conn;
+  parent?: boolean;
   style?: React.CSSProperties;
 }) {
   const teamCls = isMeet ? "" : hasA && hasB ? "ab" : hasA ? "a" : hasB ? "b" : "";
-  const cls = `node future${isMeet ? " meet" : ""}${teamCls ? ` ${teamCls}` : ""}`;
+  const cls = [
+    "node",
+    "future",
+    isMeet ? "meet" : "",
+    teamCls,
+    conn ? `conn-${conn}` : "",
+    parent ? "conn-parent" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className={cls} style={style}>
       {isMeet ? `⚔️ ${label}` : `${label} · M${matchNo}`}
@@ -112,20 +129,9 @@ export default function Bracket({
   const sfB  = new Set(r32B.map((m) => m.sf));
 
   // Flatten R32 in the same R16-grouped order used for grid positioning.
+  // Consecutive pairs feed the same parent, so even index = top child of the
+  // pair, odd index = bottom child — which decides the elbow's direction.
   const r32Cells = R16_ORDER.flatMap((r16) => r32ForR16(r16));
-
-  // CSS Grid layout:
-  //   Columns: R32 | R16 | QF | SF | Final
-  //   Rows: row 1 = headers, rows 2–17 = 16 bracket slots
-  //
-  //   R32  cells: 1 row each  → gridRow = idx + 2
-  //   R16  cells: 2 rows each → gridRow = j*2+2 / j*2+4
-  //   QF   cells: 4 rows each → gridRow = k*4+2 / k*4+6
-  //   SF   cells: 8 rows each → gridRow = l*8+2 / l*8+10
-  //   Final:     16 rows      → gridRow = 2 / 18
-  //
-  // A cell spanning N rows is automatically centered on the midpoint of its N
-  // R32 children, so alignment is exact regardless of cell content height.
 
   return (
     <div className="bracket-scroll">
@@ -145,6 +151,7 @@ export default function Bracket({
             teamA={teamA}
             teamB={teamB}
             isMeet={isMeet("Round of 32", m.id)}
+            conn={idx % 2 === 0 ? "top" : "bottom"}
             style={{ gridColumn: 1, gridRow: idx + 2 }}
           />
         ))}
@@ -158,6 +165,8 @@ export default function Bracket({
             isMeet={isMeet("Round of 16", r16)}
             hasA={r16A.has(r16)}
             hasB={r16B.has(r16)}
+            conn={j % 2 === 0 ? "top" : "bottom"}
+            parent
             style={{ gridColumn: 2, gridRow: `${j * 2 + 2} / ${j * 2 + 4}` }}
           />
         ))}
@@ -171,6 +180,8 @@ export default function Bracket({
             isMeet={isMeet("Quarter-finals", qf)}
             hasA={qfA.has(qf)}
             hasB={qfB.has(qf)}
+            conn={k % 2 === 0 ? "top" : "bottom"}
+            parent
             style={{ gridColumn: 3, gridRow: `${k * 4 + 2} / ${k * 4 + 6}` }}
           />
         ))}
@@ -184,6 +195,8 @@ export default function Bracket({
             isMeet={isMeet("Semi-finals", sf)}
             hasA={sfA.has(sf)}
             hasB={sfB.has(sf)}
+            conn={l % 2 === 0 ? "top" : "bottom"}
+            parent
             style={{ gridColumn: 4, gridRow: `${l * 8 + 2} / ${l * 8 + 10}` }}
           />
         ))}
@@ -195,6 +208,7 @@ export default function Bracket({
           isMeet={isMeet("Final", 104)}
           hasA
           hasB
+          parent
           style={{ gridColumn: 5, gridRow: "2 / 18" }}
         />
       </div>
