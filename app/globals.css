@@ -220,7 +220,10 @@ select.teamB {
   flex-wrap: wrap;
   margin-top: 16px;
 }
-.whatif .col {
+.pos-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   text-align: left;
 }
 .seg {
@@ -290,25 +293,27 @@ select.teamB {
   overflow-x: auto;
   padding-bottom: 12px;
 }
+
+/* CSS Grid bracket: 5 columns, row 1 = headers, rows 2–17 = 16 bracket slots.
+   Each later round's cells span proportionally more rows so their vertical
+   center aligns exactly with the midpoint of the R32 cells they contain. */
 .bracket {
-  display: flex;
-  gap: 14px;
-  min-width: 920px;
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr;
+  grid-template-rows: auto repeat(16, minmax(0, 1fr));
+  column-gap: 14px;
+  row-gap: 4px;
+  min-width: 900px;
 }
-.col {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  flex: 1;
-  gap: 8px;
-}
+
 .col-head {
+  align-self: end;
   text-align: center;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
-  margin-bottom: 6px;
+  padding-bottom: 8px;
   font-weight: 600;
 }
 
@@ -378,11 +383,26 @@ select.teamB {
   justify-content: center;
   color: var(--muted);
   text-align: center;
-  min-height: 38px;
+  font-size: 11px;
 }
 .node.future.meet {
   color: var(--meet);
   font-weight: 700;
+}
+.node.future.a {
+  background: var(--teamA-bg);
+  border-color: var(--teamA);
+  color: var(--teamA);
+}
+.node.future.b {
+  background: var(--teamB-bg);
+  border-color: var(--teamB);
+  color: var(--teamB);
+}
+.node.future.ab {
+  background: linear-gradient(135deg, var(--teamA-bg), var(--teamB-bg));
+  border-color: var(--border);
+  color: var(--text);
 }
 
 footer.foot {
