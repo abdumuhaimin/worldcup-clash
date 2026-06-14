@@ -33,21 +33,23 @@ function r32MatchesForTeam(team: Team): R32Match[] {
   return R32.filter((m) => slotHostsTeam(m.a, team) || slotHostsTeam(m.b, team));
 }
 
-function R32Cell({
+/** Outgoing-connector class for a cell, by its index within its round: even =
+ *  top of its pair (connector elbows down to the parent), odd = bottom (up). */
+const out = (i: number): string => (i % 2 === 0 ? "out-top" : "out-bot");
+
+function R32Box({
   match,
   teamA,
   teamB,
   isMeet,
-  style,
 }: {
   match: R32Match;
   teamA: Team;
   teamB: Team;
   isMeet: boolean;
-  style?: React.CSSProperties;
 }) {
   return (
-    <div className={`node${isMeet ? " meet" : ""}`} style={style}>
+    <div className={`node${isMeet ? " meet" : ""}`}>
       <div className="mno">M{match.id}</div>
       {[match.a, match.b].map((slot, i) => {
         const a = slotHostsTeam(slot, teamA);
@@ -64,26 +66,24 @@ function R32Cell({
   );
 }
 
-function FutureCell({
+function FutureBox({
   label,
   matchNo,
   isMeet,
   hasA,
   hasB,
-  style,
 }: {
   label: string;
   matchNo: number;
   isMeet: boolean;
   hasA: boolean;
   hasB: boolean;
-  style?: React.CSSProperties;
 }) {
   const teamCls = isMeet ? "" : hasA && hasB ? "ab" : hasA ? "a" : hasB ? "b" : "";
   const cls = `node future${isMeet ? " meet" : ""}${teamCls ? ` ${teamCls}` : ""}`;
   return (
-    <div className={cls} style={style}>
-      {isMeet ? `⚔️ ${label}` : `${label} · M${matchNo}`}
+    <div className={cls} title={isMeet ? label : `${label} · Match ${matchNo}`}>
+      {isMeet ? `⚔️ ${label}` : `M${matchNo}`}
     </div>
   );
 }
@@ -111,7 +111,9 @@ export default function Bracket({
   const sfA  = new Set(r32A.map((m) => m.sf));
   const sfB  = new Set(r32B.map((m) => m.sf));
 
-  // Flatten R32 in the same R16-grouped order used for grid positioning.
+  // Flatten R32 in the same R16-grouped order used for grid positioning. The
+  // ordering is a true bracket order: each consecutive pair feeds the next
+  // round's match, so the connector elbows always join adjacent siblings.
   const r32Cells = R16_ORDER.flatMap((r16) => r32ForR16(r16));
 
   // CSS Grid layout:
@@ -124,8 +126,11 @@ export default function Bracket({
   //   SF   cells: 8 rows each → gridRow = l*8+2 / l*8+10
   //   Final:     16 rows      → gridRow = 2 / 18
   //
-  // A cell spanning N rows is automatically centered on the midpoint of its N
-  // R32 children, so alignment is exact regardless of cell content height.
+  // Each match sits in a `.cell` that fills its grid area; the visible box is
+  // centered inside it and the bracket connector lines are drawn in the column
+  // gaps via the cell's ::before / ::after. Because every cell in a round is the
+  // same height and spans twice the rows of the previous round, a parent always
+  // lands on the midpoint of its two children and the elbows line up exactly.
 
   return (
     <div className="bracket-scroll">
@@ -137,66 +142,86 @@ export default function Bracket({
         <div className="col-head" style={{ gridColumn: 4, gridRow: 1 }}>Semi-finals</div>
         <div className="col-head" style={{ gridColumn: 5, gridRow: 1 }}>Final</div>
 
-        {/* Round of 32 — column 1, one row per match */}
+        {/* Round of 32 — column 1, one row per match (feeds rightward only) */}
         {r32Cells.map((m, idx) => (
-          <R32Cell
+          <div
             key={m.id}
-            match={m}
-            teamA={teamA}
-            teamB={teamB}
-            isMeet={isMeet("Round of 32", m.id)}
+            className={`cell ${out(idx)}${isMeet("Round of 32", m.id) ? " meet" : ""}`}
             style={{ gridColumn: 1, gridRow: idx + 2 }}
-          />
+          >
+            <R32Box
+              match={m}
+              teamA={teamA}
+              teamB={teamB}
+              isMeet={isMeet("Round of 32", m.id)}
+            />
+          </div>
         ))}
 
         {/* Round of 16 — column 2, each spans 2 rows */}
         {R16_ORDER.map((r16, j) => (
-          <FutureCell
+          <div
             key={r16}
-            label="Round of 16"
-            matchNo={r16}
-            isMeet={isMeet("Round of 16", r16)}
-            hasA={r16A.has(r16)}
-            hasB={r16B.has(r16)}
+            className={`cell in ${out(j)}${isMeet("Round of 16", r16) ? " meet" : ""}`}
             style={{ gridColumn: 2, gridRow: `${j * 2 + 2} / ${j * 2 + 4}` }}
-          />
+          >
+            <FutureBox
+              label="Round of 16"
+              matchNo={r16}
+              isMeet={isMeet("Round of 16", r16)}
+              hasA={r16A.has(r16)}
+              hasB={r16B.has(r16)}
+            />
+          </div>
         ))}
 
         {/* Quarter-finals — column 3, each spans 4 rows */}
         {QF_ORDER.map((qf, k) => (
-          <FutureCell
+          <div
             key={qf}
-            label="Quarter-final"
-            matchNo={qf}
-            isMeet={isMeet("Quarter-finals", qf)}
-            hasA={qfA.has(qf)}
-            hasB={qfB.has(qf)}
+            className={`cell in ${out(k)}${isMeet("Quarter-finals", qf) ? " meet" : ""}`}
             style={{ gridColumn: 3, gridRow: `${k * 4 + 2} / ${k * 4 + 6}` }}
-          />
+          >
+            <FutureBox
+              label="Quarter-final"
+              matchNo={qf}
+              isMeet={isMeet("Quarter-finals", qf)}
+              hasA={qfA.has(qf)}
+              hasB={qfB.has(qf)}
+            />
+          </div>
         ))}
 
         {/* Semi-finals — column 4, each spans 8 rows */}
         {SF_ORDER.map((sf, l) => (
-          <FutureCell
+          <div
             key={sf}
-            label="Semi-final"
-            matchNo={sf}
-            isMeet={isMeet("Semi-finals", sf)}
-            hasA={sfA.has(sf)}
-            hasB={sfB.has(sf)}
+            className={`cell in ${out(l)}${isMeet("Semi-finals", sf) ? " meet" : ""}`}
             style={{ gridColumn: 4, gridRow: `${l * 8 + 2} / ${l * 8 + 10}` }}
-          />
+          >
+            <FutureBox
+              label="Semi-final"
+              matchNo={sf}
+              isMeet={isMeet("Semi-finals", sf)}
+              hasA={sfA.has(sf)}
+              hasB={sfB.has(sf)}
+            />
+          </div>
         ))}
 
-        {/* Final — column 5, spans all 16 rows */}
-        <FutureCell
-          label="Final"
-          matchNo={104}
-          isMeet={isMeet("Final", 104)}
-          hasA
-          hasB
+        {/* Final — column 5, spans all 16 rows (fed from the left only) */}
+        <div
+          className={`cell in${isMeet("Final", 104) ? " meet" : ""}`}
           style={{ gridColumn: 5, gridRow: "2 / 18" }}
-        />
+        >
+          <FutureBox
+            label="Final"
+            matchNo={104}
+            isMeet={isMeet("Final", 104)}
+            hasA
+            hasB
+          />
+        </div>
       </div>
     </div>
   );

@@ -296,14 +296,72 @@ select.teamB {
 
 /* CSS Grid bracket: 5 columns, row 1 = headers, rows 2–17 = 16 bracket slots.
    Each later round's cells span proportionally more rows so their vertical
-   center aligns exactly with the midpoint of the R32 cells they contain. */
+   center aligns exactly with the midpoint of the cells they contain. The
+   tournament connector lines are drawn in the column gaps (--cgap) by each
+   cell's ::before / ::after — see `.cell` below. */
 .bracket {
+  --cgap: 34px;
+  --rgap: 8px;
+  --line: #3a4660;
   display: grid;
   grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr;
   grid-template-rows: auto repeat(16, minmax(0, 1fr));
-  column-gap: 14px;
-  row-gap: 4px;
-  min-width: 900px;
+  column-gap: var(--cgap);
+  row-gap: var(--rgap);
+  min-width: 960px;
+}
+
+/* A cell fills its whole grid area and centers the visible match box inside it,
+   so the box stays compact (a real bracket node) while the cell's full height
+   is used to position the connector elbows. */
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.cell > .node {
+  width: 100%;
+}
+
+/* Outgoing connector (this match → its parent in the next round): a horizontal
+   stub at the cell's vertical centre that elbows to the gap midpoint, then runs
+   vertically toward the parent. Top-of-pair elbows down, bottom-of-pair up; the
+   two halves meet to form one line. Height = half the cell + half a row gap,
+   which is exactly half the centre-to-centre distance between siblings. */
+.cell.out-top::after,
+.cell.out-bot::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  width: calc(var(--cgap) / 2);
+  height: calc(50% + var(--rgap) / 2);
+  border-right: 2px solid var(--line);
+}
+.cell.out-top::after {
+  top: 50%;
+  border-top: 2px solid var(--line);
+}
+.cell.out-bot::after {
+  bottom: 50%;
+  border-bottom: 2px solid var(--line);
+}
+
+/* Incoming connector (parent ← children): a horizontal stub from the cell's
+   left edge back to the gap midpoint, meeting the children's vertical line. */
+.cell.in::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: calc(var(--cgap) / 2);
+  border-top: 2px solid var(--line);
+}
+
+/* Light up the lines around the earliest possible meeting. */
+.cell.meet.in::before,
+.cell.meet.out-top::after,
+.cell.meet.out-bot::after {
+  border-color: var(--meet);
 }
 
 .col-head {
